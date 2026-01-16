@@ -29,23 +29,17 @@ class Mutation:
     after creation.
 
     Fields:
-        operator (str):
-            The mutation operator used (e.g., ROR, LCR, CRP).
+        operator (str): The mutation operator used (e.g., ROR, LCR, CRP).
 
-        line_no (int):
-            The line number in the source file where the mutation occurs.
+        line_no (int): The line number in the source file where the mutation occurs.
 
-        col_start (int):
-            The column index where the mutation begins on the line (0-based).
+        col_start (int): The column index where the mutation begins on the line (0-based).
 
-        col_end (int):
-            The column index where the mutation ends on the line (0-based).
+        col_end (int): The column index where the mutation ends on the line (0-based).
 
-        before (str):
-            Exact substring in the original source code to be replaced.
+        before (str): Exact substring in the original source code to be replaced.
 
-        after (str):
-            Replacement substring inserted by the mutation.
+        after (str): Replacement substring inserted by the mutation.
     """
 
     operator: str
@@ -65,8 +59,7 @@ def _find_all_substrings(line: str, before: str):
         before (str): The substring to search for.
 
     Yields:
-        Tuple[int, int]:
-            (start_index, end_index) of each occurrence.
+        Tuple[int, int]: (start_index, end_index) of each occurrence.
 
     This helper allows multiple mutation candidates per line.
     """
