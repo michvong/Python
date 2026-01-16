@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from __future__ import annotations
 
 import argparse
 import ast
@@ -78,3 +77,74 @@ def _find_all_substrings(line: str, before: str):
             return
         yield idx, idx + len(before)
         start = idx + 1
+
+
+def generate_mutation_candidates(lines: List[str]) -> List[Mutation]:
+    """
+    Scan the source file and generate a list of possible mutations.
+    This function DOES NOT apply mutations.
+
+    Mutation operators used:
+        ROR (Relational Operator Replacement): == ↔ !=, < ↔ <=, > ↔ >=
+        LCR (Logical Connector Replacement): and ↔ or
+        CRP (Constant Replacement): 0 ↔ 1, -1 → 0
+        AOR (Arithmetic Operator Replacement): - 1 ↔ + 1
+        NMC (None-Check Mutation): is None ↔ is not None
+
+    Args:
+        lines (List[str]): List of lines from the original source file.
+
+    Returns:
+        List[Mutation]: A list of mutation candidates.
+    """
+    muts: List[Mutation] = []
+
+    ror_map = {
+        " == ": " != ",
+        " != ": " == ",
+        " <= ": " < ",
+        " < ": " <= ",
+        " >= ": " > ",
+        " > ": " >= ",
+    }
+    lcr_map = {" and ": " or ", " or ": " and "}
+    nmc_map = {" is None": " is not None", " is not None": " is None"}
+    aor_map = {" - 1": " + 1", " + 1": " - 1"}
+    int_pat = re.compile(r"(?<![\w.])(-?1|0|1)(?![\w.])")
+
+    for i, line in enumerate(lines, start=1):
+
+        for before, after in ror_map.items():
+            for s, e in _find_all(line, before):
+                muts.append(Mutation("ROR", i, s, e, before, after))
+
+        for before, after in lcr_map.items():
+            for s, e in _find_all(line, before):
+                muts.append(Mutation("LCR", i, s, e, before, after))
+
+        for before, after in nmc_map.items():
+            for s, e in _find_all(line, before):
+                muts.append(Mutation("NMC", i, s, e, before, after))
+
+        for before, after in aor_map.items():
+            for s, e in _find_all(line, before):
+                muts.append(Mutation("AOR", i, s, e, before, after))
+
+        for m in int_pat.finditer(line):
+            tok = m.group(1)
+            if tok == "0":
+                rep = "1"
+            elif tok == "1":
+                rep = "0"
+            elif tok == "-1":
+                rep = "0"
+            else:
+                continue
+            muts.append(Mutation("CRP", i, m.start(1), m.end(1), tok, rep))
+
+    # Only store unique mutations
+    uniq = {}
+    for mu in muts:
+        key = (mu.operator, mu.line_no, mu.col_start, mu.col_end, mu.before, mu.after)
+        uniq[key] = mu
+    return list(uniq.values())
