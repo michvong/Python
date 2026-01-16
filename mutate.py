@@ -13,6 +13,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+from collections import Counter
 
 
 # -----------------------------
@@ -82,7 +83,7 @@ def generate_mutation_candidates(lines: List[str]) -> List[Mutation]:
         LCR (Logical Connector Replacement): and ↔ or
         CRP (Constant Replacement): 0 ↔ 1, -1 → 0
         AOR (Arithmetic Operator Replacement): - 1 ↔ + 1
-        NMC (None-Check Mutation): is None ↔ is not None
+        NMC (None-Check Mutation): is None ↔ is not None (Python-specific)
 
     Args:
         lines (List[str]): List of lines from the original source file.
@@ -196,6 +197,27 @@ def unified_diff_u3(original: List[str], mutated: List[str], relpath: str) -> st
     return "\n".join(diff) + "\n"
 
 
+# -----------------------------
+# Routine/function mapping
+# -----------------------------
+
+
+@dataclass(frozen=True)
+class RoutineSpan:
+    """
+    Represents the span of lines in a single routine/function.
+
+    Fields:
+        name (str): Routine name.
+        start (int): Starting line number of the routine definition.
+        end (int): Ending line number of the routine definition.
+    """
+
+    name: str
+    start: int
+    end: int
+
+
 def _self_test() -> None:
     # Load a target file
     target = Path("data_structures/linked_list/circular_linked_list.py")
@@ -204,26 +226,38 @@ def _self_test() -> None:
 
     # Generate candidates
     cands = generate_mutation_candidates(lines)
-    print(f"Candidates found: {len(cands)}")
+    print(f"\n=== Candidates found: {len(cands)} ===")
     assert len(cands) > 0
 
-    # Apply the first candidate, ensure only one line changed
+    print("\n=== Checking for correct mutation on line ===")
     mu = cands[0]
     mutated = apply_mutation(lines, mu)
-
-    # Count changed lines
     changed = [i for i, (a, b) in enumerate(zip(lines, mutated), start=1) if a != b]
     print(f"Mutation: {mu.operator} at line {mu.line_no}, changed lines: {changed}")
     assert len(changed) == 1
     assert changed[0] == mu.line_no
+    print("Mutation passed")
 
-    # Make a diff and ensure it contains headers
+    print("\n=== Diff headers ===")
     d = unified_diff_u3(lines, mutated, str(target))
     assert d.startswith("--- a/")
     assert "+++ b/" in d
     assert "@@" in d
-    print(d)
-    print("Passed")
+    print("Diff passed")
+
+    ops = Counter(mu.operator for mu in cands)
+    print("\n=== Candidate counts by operator ===")
+    for op, count in ops.items():
+        print(f"  {op}: {count}")
+
+    print("\n=== All mutation candidates ===")
+    for i, mu in enumerate(cands, start=1):
+        print(
+            f"[{i:03d}] {mu.operator} | "
+            f"line {mu.line_no} | "
+            f"cols {mu.col_start}:{mu.col_end} | "
+            f"'{mu.before}' -> '{mu.after}'"
+        )
 
 
 if __name__ == "__main__":
