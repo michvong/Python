@@ -108,23 +108,24 @@ def generate_mutation_candidates(lines: List[str]) -> List[Mutation]:
     for i, line in enumerate(lines, start=1):
 
         for before, after in ror_map.items():
-            for s, e in _find_all(line, before):
+            for s, e in _find_all_substrings(line, before):
                 muts.append(Mutation("ROR", i, s, e, before, after))
 
         for before, after in lcr_map.items():
-            for s, e in _find_all(line, before):
+            for s, e in _find_all_substrings(line, before):
                 muts.append(Mutation("LCR", i, s, e, before, after))
 
         for before, after in nmc_map.items():
-            for s, e in _find_all(line, before):
+            for s, e in _find_all_substrings(line, before):
                 muts.append(Mutation("NMC", i, s, e, before, after))
 
         for before, after in aor_map.items():
-            for s, e in _find_all(line, before):
+            for s, e in _find_all_substrings(line, before):
                 muts.append(Mutation("AOR", i, s, e, before, after))
 
         for m in int_pat.finditer(line):
             tok = m.group(1)
+
             if tok == "0":
                 rep = "1"
             elif tok == "1":
@@ -133,6 +134,7 @@ def generate_mutation_candidates(lines: List[str]) -> List[Mutation]:
                 rep = "0"
             else:
                 continue
+
             muts.append(Mutation("CRP", i, m.start(1), m.end(1), tok, rep))
 
     # Only store unique mutations
@@ -140,4 +142,32 @@ def generate_mutation_candidates(lines: List[str]) -> List[Mutation]:
     for mu in muts:
         key = (mu.operator, mu.line_no, mu.col_start, mu.col_end, mu.before, mu.after)
         uniq[key] = mu
+
     return list(uniq.values())
+
+
+def apply_mutation(lines: List[str], mu: Mutation) -> List[str]:
+    """
+    Apply a single mutation to the source file.
+
+    Args:
+        lines (List[str]): Original source file lines.
+        mu (Mutation): Mutation to apply.
+
+    Returns:
+        List[str]: New list of lines with exactly one modification applied.
+
+    Raises:
+        ValueError: If the expected 'before' text is not found at the specified location.
+    """
+    new_lines = lines.copy()
+    idx = mu.line_no - 1
+    line = new_lines[idx]
+
+    if line[mu.col_start : mu.col_end] != mu.before:
+        raise ValueError("Mutation 'before' text not found at expected location")
+
+    # (before mutation) + (mutated text) + (after mutation)
+    new_lines[idx] = line[: mu.col_start] + mu.after + line[mu.col_end :]
+
+    return new_lines
