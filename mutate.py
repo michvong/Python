@@ -55,3 +55,26 @@ class Mutation:
     col_end: int
     before: str
     after: str
+
+
+def _find_all_substrings(line: str, before: str):
+    """
+    Yields all occurrences of a substring in a line.
+
+    Args:
+        line (str): A single line of code.
+        before (str): The substring to search for.
+
+    Yields:
+        Tuple[int, int]:
+            (start_index, end_index) of each occurrence.
+
+    This helper allows multiple mutation candidates per line.
+    """
+    start = 0
+    while True:
+        idx = line.find(before, start)
+        if idx == -1:
+            return
+        yield idx, idx + len(before)
+        start = idx + 1
