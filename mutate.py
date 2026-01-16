@@ -171,3 +171,60 @@ def apply_mutation(lines: List[str], mu: Mutation) -> List[str]:
     new_lines[idx] = line[: mu.col_start] + mu.after + line[mu.col_end :]
 
     return new_lines
+
+
+def unified_diff_u3(original: List[str], mutated: List[str], relpath: str) -> str:
+    """
+    Generate a unified diff with 3 lines of context.
+
+    Args:
+        original (List[str]): Original source file lines.
+        mutated (List[str]): Mutated source file lines.
+        relpath (str): Relative file path used in diff headers.
+
+    Returns:
+        str: Unified diff text with 3 lines of context.
+    """
+    diff = difflib.unified_diff(
+        original,
+        mutated,
+        fromfile=f"a/{relpath}",
+        tofile=f"b/{relpath}",
+        lineterm="",
+        n=3,
+    )
+    return "\n".join(diff) + "\n"
+
+
+def _self_test() -> None:
+    # Load a target file
+    target = Path("data_structures/linked_list/circular_linked_list.py")
+    text = target.read_text(encoding="utf-8")
+    lines = text.splitlines(keepends=True)
+
+    # Generate candidates
+    cands = generate_mutation_candidates(lines)
+    print(f"Candidates found: {len(cands)}")
+    assert len(cands) > 0
+
+    # Apply the first candidate, ensure only one line changed
+    mu = cands[0]
+    mutated = apply_mutation(lines, mu)
+
+    # Count changed lines
+    changed = [i for i, (a, b) in enumerate(zip(lines, mutated), start=1) if a != b]
+    print(f"Mutation: {mu.operator} at line {mu.line_no}, changed lines: {changed}")
+    assert len(changed) == 1
+    assert changed[0] == mu.line_no
+
+    # Make a diff and ensure it contains headers
+    d = unified_diff_u3(lines, mutated, str(target))
+    assert d.startswith("--- a/")
+    assert "+++ b/" in d
+    assert "@@" in d
+    print(d)
+    print("Passed")
+
+
+if __name__ == "__main__":
+    _self_test()
